@@ -1,0 +1,303 @@
+import sys
+import numpy as np
+from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
+from numpy.ma.core import resize
+
+from UI_video_streaming import Ui_MainWindow
+from PyQt5 import QtCore, QtGui, QtWidgets
+import cv2
+from MODBUS_TCP_CLIENT import *
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QApplication, QCheckBox, QGridLayout,
+                             QGroupBox, QMenu, QPushButton,
+                             QRadioButton, QVBoxLayout,
+                             QWidget, QSlider, QLabel, QMainWindow)
+
+minR = maxR = 0
+param_1 = param_2 = 100
+scale = 0.9
+real_radius = int(input('введите радиус заготовки'))
+
+class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+    def __init__(self, parent=None, ):
+        super(MainWindow, self).__init__(parent=parent)
+
+
+        self.setupUi(self)
+        self.init_properties()
+        self.init_connections()
+
+        self.horizontalSlider_minR.valueChanged[int].connect(self.valueChangesminR)
+        self.horizontalSlider_maxR.valueChanged[int].connect(self.valueChangesmaxR)
+        self.horizontalSlider_param_1.valueChanged[int].connect(self.valueChanges_param_1)
+        self.horizontalSlider_param_2.valueChanged[int].connect(self.valueChanges_param_2)
+        self.horizontalSlider_scale.valueChanged[int].connect(self.valueChangesScale)
+
+    def valueChangesminR(self, value1):
+        global minR
+        minR = value1
+
+    def valueChangesmaxR(self, value2):
+        global maxR
+        maxR = value2
+
+    def valueChanges_param_1(self, value3):
+        global param_1
+        param_1 = value3
+
+    def valueChanges_param_2(self, value4):
+        global param_2
+        param_2 = value4
+
+    def valueChangesScale(self, value5):
+        global scale
+        scale = value5/500
+
+
+
+    def init_properties(self):
+        self.stream_thread = Stream_thread()
+
+        
+    def init_connections(self):
+        self.stream_thread.change_pixmap.connect(self.image_label.setPixmap)
+        self.start_stop_btn.clicked.connect(self.run_stop_video_streaming)
+
+
+
+
+    @QtCore.pyqtSlot(bool)
+    def run_stop_video_streaming(self):
+        
+        if self.start_stop_btn.isChecked():
+            self.stream_thread.start()
+            self.update_button_style()
+        else:
+            self.stream_thread.stop()
+            self.update_button_style()
+    
+    def update_button_style(self):
+        if self.start_stop_btn.isChecked():
+            icon_stop = QtGui.QIcon()
+            icon_stop.addPixmap(QtGui.QPixmap(":/icons/icons/stop_video.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            self.start_stop_btn.setIcon(icon_stop)
+            self.start_stop_btn.setStyleSheet("border: 2px solid red; border-radius: 7px;")
+        else:
+            icon_run = QtGui.QIcon()
+            icon_run.addPixmap(QtGui.QPixmap(":/icons/icons/run_video.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            self.start_stop_btn.setIcon(icon_run)
+            self.start_stop_btn.setStyleSheet("border: none solid blue; border-radius: 7px;")
+
+
+
+    # def BeginSerialCOMPort(self):
+    #     serial = QSerialPort()
+    #     serial.setBaudRate(115200)
+    #
+    #     self.nameBt = self.Ui_MainWindow.pushButtonSEARCH.text()
+    #     #
+    #     if self.nameBt == 'SEARCH':
+    #
+    #         portlist = []
+    #         ports = QSerialPortInfo().availablePorts()
+    #         for port in ports:
+    #             portlist.append(port.portName())
+    #         if len(portlist) == 0:
+    #             print('huita blyat')
+    #             self.comboBoxCOMPORT.clear()
+    #         else:
+    #             portComList = list(set(portlist))
+    #             self.comboBoxCOMPORT.addItems(portComList)
+    #             self.pushButtonSEARCH.setText('OPEN')
+    #
+    #     if self.nameBt == 'OPEN':
+    #
+    #         self.serial.setPortName(self.comboBoxCOMPORT.currentText())
+    #         #self.text_str = 'OPEN COM PORT' + self.comboBoxCOMPORT.currentText()
+    #         self.pushButtonSEARCH.setText('CLOSE')
+    #
+    #     if self.nameBt == 'CLOSE':
+    #
+    #         self.pushButtonSEARCH.setText('SEARCH')
+    #         self.serial.close()
+    #         #self.text_str = 'CLOSE COM PORT:' + self.comboBoxCOMPORT.currentText()
+
+
+
+
+class Stream_thread(QtCore.QThread, Ui_MainWindow):
+    change_pixmap = QtCore.pyqtSignal(QtGui.QPixmap)
+
+    # def resized(self, image):  # функция пропорционального изменения размера
+    #     # Подготовим новые размеры
+    #     r = float(scale) / image.shape[1]
+    #     dim = (scale, int(image.shape[0] * r))
+    #     # уменьшаем изображение до подготовленных размеров
+    #     return cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+
+    def CirclesCenters(self, image):
+        im = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        rows = im.shape[0]
+
+        circles = cv2.HoughCircles(im, cv2.HOUGH_GRADIENT, 1, rows / 8,
+                                   param1=param_1, param2=param_2,
+                                   minRadius=minR, maxRadius=maxR)
+        center_koord = []
+        radius_list = []
+        if circles is not None:
+            circles = np.uint16(np.around(circles))
+            for i in circles[0, :]:
+                center = (i[0], i[1])
+                center_koord.append(list(map(int, center)))
+
+                # circle center
+                image = cv2.circle(image, center, 1, (0, 0, 255), 3)
+                # circle outline
+                radius = i[2]
+                image = cv2.circle(image, center, radius, (0, 255, 0), 3)
+                radius_list.append(int(i[2]))
+
+            # print('radius_list!!!!!', radius_list)
+            # print('center_koord!!!!!', center_koord)
+
+        # return center_koord, radius_list
+        return image, center_koord, radius_list
+
+    def incr_koord_dp(self, img, l, radius_list, real_radius, is_setting = 1):
+
+        # пикселей на мм по оси х и у
+        # расчет абсолютных координат
+        x123 = []
+        y123 = []
+        for i in range(len(l)):
+            x123.append(l[i][0])
+            y123.append(l[i][1])
+
+        # if is_setting == 1:
+        #     print('absolutx', x123)
+        #     print('absoluty', y123)
+            #image = (np.zeros((img.shape[0], img.shape[1], 3), np.uint8))
+
+        # for j in range(len(l)):
+        #     image = cv2.circle(img,(int(x123[j]), int(y123[j])),1,(0, 0, 255), 10)
+        # cv2.imshow('image111111111111111111', resized(image, scale))
+
+        # вычисление новых коорд относительно центра кадра
+
+        (h, w) = img.shape[:2]
+
+        nolx = w // 2
+        noly = h // 2
+
+        for i in range(len(x123)):
+            x123[i] = x123[i] - nolx
+            y123[i] = y123[i] - noly
+
+        # if is_setting == 1:
+        #     print('середина кадра', nolx, noly)
+        #     print('centerx', x123)
+        #     print('centery', y123)
+
+        factx = []
+        facty = []
+        d_real_r = []
+        mm_nolx = mm_noly = 0
+
+        rast_o_dot_p = []
+        rast_o_dot_mm = []
+
+        if real_radius != 0 and radius_list:
+
+            for rr in range(len(radius_list)):
+                d_real_r.append(real_radius / radius_list[rr])
+
+                factx.append(x123[rr] * d_real_r[rr])
+                facty.append(y123[rr] * d_real_r[rr])
+
+            for itr in range(len(x123)):
+                mm_nolx = ((sum(d_real_r) / len(d_real_r)) * nolx)
+                mm_noly = ((sum(d_real_r) / len(d_real_r)) * noly)
+
+                rast_o_dot_p.append((((x123[itr]) ** 2) + ((y123[itr]) ** 2)) ** 0.5)
+
+                rast_o_dot_mm.append((((factx[itr]) ** 2) + ((facty[itr]) ** 2)) ** 0.5)
+
+            if is_setting == 1:
+                print('\n')
+                print('Коэффициент отношения мм к пикселям', d_real_r)
+                print('x координаты в мм отн. центра кадра', factx)
+                print('y координаты в мм отн. центра кадра', facty)
+
+                print('координаты центра кадра в мм       ', mm_nolx, mm_noly)
+                print('расстояние до центров в пикселях   ', rast_o_dot_p)
+                print('расстояние до центров в мм         ', rast_o_dot_mm,'\n')
+
+        else:
+            facty = []
+            factx = []
+
+        return factx, facty
+
+
+
+    def run(self):
+        oldMW3 = 0
+        self.PLC1 = MODBUS_TCP_master()
+        self.PLC1.Start_TCP_client(IP_address='127.0.0.1')
+
+
+        cap = cv2.VideoCapture(2)
+        self.thread_is_active = True
+
+
+
+        while self.thread_is_active:
+            MW3 = self.PLC1.Read_holding_register_uint16(Register_address=3)
+            print("minR", minR, "maxR", maxR, "param_1", param_1, "param_2", param_2)
+
+
+            ret, image = cap.read()
+            if ret:
+                image, center_koord, radius_list = self.CirclesCenters(image)
+                factx, facty = self.incr_koord_dp(image, center_koord, radius_list, real_radius)
+                print('factx, facty', factx, facty)
+                #image = self.resized(image)
+
+                # print('!!!!!!!!!!!', center_koord, radius_list)
+                # image = self.rotation(image, 30)
+                # image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                # flipped_image = cv2.flip(image, 1)
+
+                qt_image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_BGR888)
+                pic = qt_image.scaled(int(image.shape[1]*scale), int(image.shape[0]*scale), QtCore.Qt.KeepAspectRatio)
+                pixmap = QtGui.QPixmap.fromImage(pic)
+                self.change_pixmap.emit(pixmap)
+
+                if oldMW3 != MW3 and factx:
+                    if MW3 in range(len(factx)):
+                        self.PLC1.Write_multiple_holding_register_float32(Register_address=1, Register_value=factx[MW3])
+                        self.PLC1.Write_multiple_holding_register_float32(Register_address=4, Register_value=facty[MW3])
+
+                        oldMW3 = MW3
+
+
+
+
+    def stop(self):
+        self.PLC1.Stop_TCP_client()
+        self.thread_is_active = False
+        self.quit()
+       
+         
+# def main():
+#    app = QApplication(sys.argv)
+#
+#    ex.show()
+#    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    w = MainWindow()
+    w.show()
+    sys.exit(app.exec_())
