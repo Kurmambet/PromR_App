@@ -122,7 +122,7 @@ color: #fff;
           <enum>QFrame::Raised</enum>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
-          <item alignment="Qt::AlignHCenter">
+          <item>
            <widget class="QFrame" name="frame_5">
             <property name="frameShape">
              <enum>QFrame::StyledPanel</enum>
@@ -153,11 +153,44 @@ color: #fff;
                 <string notr="true">color: rgb(255, 255, 255)</string>
                </property>
                <property name="text">
-                <string>Circle detection</string>
+                <string>Modbus port:</string>
                </property>
               </widget>
              </item>
             </layout>
+           </widget>
+          </item>
+          <item alignment="Qt::AlignVCenter">
+           <widget class="QLineEdit" name="lineEdit_2">
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="inputMask">
+             <string>000.000.000.000:0000</string>
+            </property>
+           </widget>
+          </item>
+          <item alignment="Qt::AlignLeft|Qt::AlignVCenter">
+           <widget class="QLabel" name="label_7">
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Radius</string>
+            </property>
+           </widget>
+          </item>
+          <item alignment="Qt::AlignVCenter">
+           <widget class="QLineEdit" name="lineEdit">
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
            </widget>
           </item>
          </layout>
@@ -190,7 +223,7 @@ color: #fff;
        <property name="bottomMargin">
         <number>0</number>
        </property>
-       <item alignment="Qt::AlignLeft">
+       <item>
         <widget class="QFrame" name="side_menu">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
@@ -211,33 +244,6 @@ color: #fff;
           <property name="bottomMargin">
            <number>0</number>
           </property>
-          <item>
-           <widget class="QPushButton" name="pushButtonSEARCH">
-            <property name="baseSize">
-             <size>
-              <width>0</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="font">
-             <font>
-              <pointsize>8</pointsize>
-             </font>
-            </property>
-            <property name="text">
-             <string>SEARCH</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="comboBoxCOMPORT">
-            <property name="font">
-             <font>
-              <pointsize>8</pointsize>
-             </font>
-            </property>
-           </widget>
-          </item>
           <item alignment="Qt::AlignLeft|Qt::AlignTop">
            <widget class="QFrame" name="frame">
             <property name="styleSheet">
@@ -255,6 +261,16 @@ border-radius: 7px;
              <enum>QFrame::Raised</enum>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_3">
+             <item>
+              <widget class="QLabel" name="label_8">
+               <property name="text">
+                <string>com port</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="spinBoxCOMPORT"/>
+             </item>
              <item>
               <widget class="QPushButton" name="start_stop_btn">
                <property name="minimumSize">

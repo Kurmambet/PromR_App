@@ -17,22 +17,50 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QGridLayout,
 minR = maxR = 0
 param_1 = param_2 = 100
 scale = 0.9
-real_radius = int(input('введите радиус заготовки'))
+port1 = 502
+ipAdr = '127.0.0.1'
+real_radius = 10
+comportCAM = 0
+
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None, ):
         super(MainWindow, self).__init__(parent=parent)
 
-
         self.setupUi(self)
         self.init_properties()
         self.init_connections()
+
+        self.lineEdit_2.returnPressed.connect(self.linePort_2)
+        self.lineEdit.returnPressed.connect(self.lineRadius)
+        self.spinBoxCOMPORT.valueChanged[int].connect(self.comID)
 
         self.horizontalSlider_minR.valueChanged[int].connect(self.valueChangesminR)
         self.horizontalSlider_maxR.valueChanged[int].connect(self.valueChangesmaxR)
         self.horizontalSlider_param_1.valueChanged[int].connect(self.valueChanges_param_1)
         self.horizontalSlider_param_2.valueChanged[int].connect(self.valueChanges_param_2)
         self.horizontalSlider_scale.valueChanged[int].connect(self.valueChangesScale)
+
+
+
+    def comID(self,valu):
+        global comportCAM
+        comportCAM = valu
+
+
+    def lineRadius(self):
+        global real_radius
+        real_radius = float(self.lineEdit.text())
+
+    def linePort_2(self):
+        global port1
+        port1 = int(self.lineEdit_2.text()[-3:])
+
+
+        global ipAdr
+        ipAdr = self.lineEdit_2.text()[:9]
+
+
 
     def valueChangesminR(self, value1):
         global minR
@@ -91,37 +119,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 
-    # def BeginSerialCOMPort(self):
-    #     serial = QSerialPort()
-    #     serial.setBaudRate(115200)
-    #
-    #     self.nameBt = self.Ui_MainWindow.pushButtonSEARCH.text()
-    #     #
-    #     if self.nameBt == 'SEARCH':
-    #
-    #         portlist = []
-    #         ports = QSerialPortInfo().availablePorts()
-    #         for port in ports:
-    #             portlist.append(port.portName())
-    #         if len(portlist) == 0:
-    #             print('huita blyat')
-    #             self.comboBoxCOMPORT.clear()
-    #         else:
-    #             portComList = list(set(portlist))
-    #             self.comboBoxCOMPORT.addItems(portComList)
-    #             self.pushButtonSEARCH.setText('OPEN')
-    #
-    #     if self.nameBt == 'OPEN':
-    #
-    #         self.serial.setPortName(self.comboBoxCOMPORT.currentText())
-    #         #self.text_str = 'OPEN COM PORT' + self.comboBoxCOMPORT.currentText()
-    #         self.pushButtonSEARCH.setText('CLOSE')
-    #
-    #     if self.nameBt == 'CLOSE':
-    #
-    #         self.pushButtonSEARCH.setText('SEARCH')
-    #         self.serial.close()
-    #         #self.text_str = 'CLOSE COM PORT:' + self.comboBoxCOMPORT.currentText()
+
 
 
 
@@ -129,12 +127,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 class Stream_thread(QtCore.QThread, Ui_MainWindow):
     change_pixmap = QtCore.pyqtSignal(QtGui.QPixmap)
 
-    # def resized(self, image):  # функция пропорционального изменения размера
-    #     # Подготовим новые размеры
-    #     r = float(scale) / image.shape[1]
-    #     dim = (scale, int(image.shape[0] * r))
-    #     # уменьшаем изображение до подготовленных размеров
-    #     return cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+
 
     def CirclesCenters(self, image):
         im = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -244,10 +237,10 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
     def run(self):
         oldMW3 = 0
         self.PLC1 = MODBUS_TCP_master()
-        self.PLC1.Start_TCP_client(IP_address='127.0.0.1')
+        self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port = port1)
 
 
-        cap = cv2.VideoCapture(2)
+        cap = cv2.VideoCapture(comportCAM)
         self.thread_is_active = True
 
 
