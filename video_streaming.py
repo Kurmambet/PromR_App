@@ -1,3 +1,5 @@
+from sys import flags
+
 import sys
 import numpy as np
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
@@ -18,9 +20,14 @@ minR = maxR = 0
 param_1 = param_2 = 100
 scale = 0.9
 port1 = 502
+# ipAdr = '192.168.1.8'
 ipAdr = '127.0.0.1'
 real_radius = 10
 comportCAM = 0
+BoxX = 10
+BoxRX = 20
+BoxY = 30
+BoxLEN = 40
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -34,6 +41,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.lineEdit_2.returnPressed.connect(self.linePort_2)
         self.lineEdit.returnPressed.connect(self.lineRadius)
         self.spinBoxCOMPORT.valueChanged[int].connect(self.comID)
+        self.spinBoxX.valueChanged[int].connect(self.deBoxX)
+        self.spinBoxY.valueChanged[int].connect(self.deBoxY)
+        self.spinBoxRX.valueChanged[int].connect(self.deBoxRX)
+        self.spinBoxLEN.valueChanged[int].connect(self.deBoxLEN)
 
         self.horizontalSlider_minR.valueChanged[int].connect(self.valueChangesminR)
         self.horizontalSlider_maxR.valueChanged[int].connect(self.valueChangesmaxR)
@@ -41,46 +52,72 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.horizontalSlider_param_2.valueChanged[int].connect(self.valueChanges_param_2)
         self.horizontalSlider_scale.valueChanged[int].connect(self.valueChangesScale)
 
+    def deBoxLEN(self, valLEN):
+        global BoxLEN
+        BoxLEN = valLEN
+        print('LEN',BoxLEN)
 
+    def deBoxRX(self, valRX):
+        global BoxRX
+        BoxRX = valRX
+        print('RX', BoxRX)
+
+    def deBoxY(self, valY):
+        global BoxY
+        BoxY = valY
+        print('Y', BoxY)
+
+    def deBoxX(self, valX):
+        global BoxX
+        BoxX = valX
+        print('X', BoxX)
 
     def comID(self,valu):
         global comportCAM
         comportCAM = valu
-
+        print('COM', comportCAM)
 
     def lineRadius(self):
         global real_radius
         real_radius = float(self.lineEdit.text())
+        print('real_radius', real_radius)
 
     def linePort_2(self):
         global port1
         port1 = int(self.lineEdit_2.text()[-3:])
 
 
+
         global ipAdr
         ipAdr = self.lineEdit_2.text()[:9]
 
+        print('ip,port', ipAdr, port1)
 
 
     def valueChangesminR(self, value1):
         global minR
         minR = value1
+        print('minR', minR)
 
     def valueChangesmaxR(self, value2):
         global maxR
         maxR = value2
+        print('maxR',maxR)
 
     def valueChanges_param_1(self, value3):
         global param_1
         param_1 = value3
+        print('param_1', param_1)
 
     def valueChanges_param_2(self, value4):
         global param_2
         param_2 = value4
+        print('param_2', param_2)
 
     def valueChangesScale(self, value5):
         global scale
         scale = value5/500
+        print('scale', scale)
 
 
 
@@ -236,18 +273,23 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
     def run(self):
         oldMW3 = 0
+        flagCon = 0
         self.PLC1 = MODBUS_TCP_master()
         self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port = port1)
 
+        if self.PLC1:
+            flagCon = 1
 
         cap = cv2.VideoCapture(comportCAM)
         self.thread_is_active = True
 
-
+        # print("параметры сервера:",ipAdr, port1)
+        # print('порты:', 'x', BoxX, 'y', BoxY, 'rx', BoxRX, 'len', BoxLEN)
+        # print("minR", minR, "maxR", maxR, "param_1", param_1, "param_2", param_2)
 
         while self.thread_is_active:
-            MW3 = self.PLC1.Read_holding_register_uint16(Register_address=3)
-            print("minR", minR, "maxR", maxR, "param_1", param_1, "param_2", param_2)
+            MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
+
 
 
             ret, image = cap.read()
@@ -267,11 +309,11 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
                 pixmap = QtGui.QPixmap.fromImage(pic)
                 self.change_pixmap.emit(pixmap)
 
-                if oldMW3 != MW3 and factx:
-                    if MW3 in range(len(factx)):
-                        self.PLC1.Write_multiple_holding_register_float32(Register_address=1, Register_value=factx[MW3])
-                        self.PLC1.Write_multiple_holding_register_float32(Register_address=4, Register_value=facty[MW3])
-
+                if flagCon == 1 and MW3 in range(len(factx)):
+                    if oldMW3 != MW3 and factx:
+                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
+                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
+                        self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
                         oldMW3 = MW3
 
 
