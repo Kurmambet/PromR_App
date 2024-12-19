@@ -197,35 +197,36 @@ class Modbus_Client_Server(QtCore.QThread):
 
     def run(self):
         oldMW3 = 0
-
+        self.isConnectedMod = 0
         self.PLC1 = MODBUS_TCP_master()
-        self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port=port1)
+
+        self.isConnectedMod = self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port=port1)
+
 
         self.thread_is_active_MODBUS = True
+        if self.isConnectedMod == 1:
+            while self.thread_is_active_MODBUS:
+                MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
 
-        while self.thread_is_active_MODBUS:
-            MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
-
-            if MW3 in range(len(factx)):
-                if oldMW3 != MW3 and factx:
-                    self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
-                    self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
-                    self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
-                    oldMW3 = MW3
+                if MW3 in range(len(factx)):
+                    if oldMW3 != MW3 and factx:
+                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
+                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
+                        self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
+                        oldMW3 = MW3
+        else:
+            w.radioButtonMODBUS_START.setText('нет подключения ' + str(ipAdr) + ':' + str(port1))
 
 
 
     def stop_Modbus(self):
         self.thread_is_active_MODBUS = False
-        self.PLC1.Stop_TCP_client()
+        # self.PLC1.Stop_TCP_client()
+
+        if self.isConnectedMod == 1:
+            self.PLC1.Stop_TCP_client_ChutChut()
+
         self.quit()
-
-
-
-
-
-
-
 
 
 
@@ -339,16 +340,11 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
 
     def run(self):
-        # oldMW3 = 0
-        #
-        # self.PLC1 = MODBUS_TCP_master()
-        # self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port = port1)
 
         cap = cv2.VideoCapture(comportCAM)
         self.thread_is_active = True
 
         while self.thread_is_active:
-            # MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
 
             ret, image = cap.read()
             if ret:
@@ -366,33 +362,16 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
 
 
-                # if MW3 in range(len(factx)):
-                #     if oldMW3 != MW3 and factx:
-                #         self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
-                #         self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
-                #         self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
-                #         oldMW3 = MW3
-
-
-
-
     def stop(self):
-        # self.PLC1.Stop_TCP_client()
-        # self.thr1.cancel()
         self.thread_is_active = False
-
         self.quit()
 
        
-         
-# def main():
-#    app = QApplication(sys.argv)
-#
-#    ex.show()
-#    sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = MainWindow()
     w.show()
+
     sys.exit(app.exec_())

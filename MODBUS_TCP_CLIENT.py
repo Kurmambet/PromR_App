@@ -289,12 +289,23 @@ class MODBUS_TCP_master(object):
         return
 
     def Start_TCP_client(self, IP_address = '127.0.0.1', TCP_port = 502):
-        self.Client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.Client_socket.connect((IP_address, TCP_port))
+        try:
+            self.Client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.Client_socket.connect((IP_address, TCP_port))
+            if self.Client_socket:
+                return 1
+        except Exception:
+            return 0
+
+
+
+
+    def Stop_TCP_client_ChutChut(self):
+        self.Client_socket.shutdown(socket.SHUT_RDWR)
         return
 
     def Stop_TCP_client(self):
-        self.Client_socket.shutdown(socket.SHUT_RDWR)
+        # self.Client_socket.shutdown(socket.SHUT_RDWR)
         self.Client_socket.close()
         self.Client_socket.__del__()
         return
