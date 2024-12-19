@@ -294,6 +294,7 @@ class MODBUS_TCP_master(object):
         return
 
     def Stop_TCP_client(self):
+        self.Client_socket.shutdown(socket.SHUT_RDWR)
         self.Client_socket.close()
         self.Client_socket.__del__()
         return

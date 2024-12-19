@@ -72,16 +72,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 
-        thr1 = threading.Thread(target=self.myfunc, daemon=True).start()
 
-
-
-    def myfunc(self):
-        global factx, facty
-        while True:
-            self.factX.setText(str(factx))
-            self.factY.setText(str(facty))
-            time.sleep(1)
 
     def deBexDP(self, valDP):
         global BoxDP
@@ -151,13 +142,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def init_properties(self):
         self.stream_thread = Stream_thread()
-
+        self.Modbus_C_S = Modbus_Client_Server()
 
 
     def init_connections(self):
         self.stream_thread.change_pixmap.connect(self.image_label.setPixmap)
         self.start_stop_btn.clicked.connect(self.run_stop_video_streaming)
+        self.radioButtonMODBUS_START.clicked.connect(self.start_Modbus)
 
+    @QtCore.pyqtSlot(bool)
+    def start_Modbus(self):
+        if self.radioButtonMODBUS_START.isChecked():
+            self.Modbus_C_S.start()
+            self.radioButtonMODBUS_START.setText('Started')
+        else:
+            self.Modbus_C_S.stop_Modbus()
+            self.radioButtonMODBUS_START.setText('Stopped')
 
 
     @QtCore.pyqtSlot(bool)
@@ -165,7 +165,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.start_stop_btn.isChecked():
             self.stream_thread.start()
             self.update_button_style()
-
         else:
             self.stream_thread.stop()
             self.update_button_style()
@@ -189,6 +188,39 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             icon_run.addPixmap(QtGui.QPixmap(":/icons/icons/run_video.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
             self.start_stop_btn.setIcon(icon_run)
             self.start_stop_btn.setStyleSheet("border: none solid blue; border-radius: 7px;")
+
+
+
+
+class Modbus_Client_Server(QtCore.QThread):
+
+
+    def run(self):
+        oldMW3 = 0
+
+        self.PLC1 = MODBUS_TCP_master()
+        self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port=port1)
+
+        self.thread_is_active_MODBUS = True
+
+        while self.thread_is_active_MODBUS:
+            MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
+
+            if MW3 in range(len(factx)):
+                if oldMW3 != MW3 and factx:
+                    self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
+                    self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
+                    self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
+                    oldMW3 = MW3
+
+
+
+    def stop_Modbus(self):
+        self.thread_is_active_MODBUS = False
+        self.PLC1.Stop_TCP_client()
+        self.quit()
+
+
 
 
 
@@ -299,27 +331,24 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
         return factx, facty
 
+    def show_koords(self):
+
+        if factx and facty:
+            w.factX.setText(str(factx))
+            w.factY.setText(str(facty))
 
 
     def run(self):
-        oldMW3 = 0
-        flagCon = 0
-        self.PLC1 = MODBUS_TCP_master()
-        self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port = port1)
-
-
+        # oldMW3 = 0
+        #
+        # self.PLC1 = MODBUS_TCP_master()
+        # self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port = port1)
 
         cap = cv2.VideoCapture(comportCAM)
         self.thread_is_active = True
 
-        # print("параметры сервера:",ipAdr, port1)
-        # print('порты:', 'x', BoxX, 'y', BoxY, 'rx', BoxRX, 'len', BoxLEN)
-        # print("minR", minR, "maxR", maxR, "param_1", param_1, "param_2", param_2)
-
         while self.thread_is_active:
-            MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
-
-
+            # MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
 
             ret, image = cap.read()
             if ret:
@@ -327,15 +356,8 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
                 global factx, facty
                 factx, facty = self.incr_koord_dp(image, center_koord, radius_list, real_radius)
 
+                self.thr1 = threading.Thread(target=self.show_koords, daemon=True).start()
 
-
-                # print('factxxxxxxxx, facty', str(factx), str(facty))
-                #image = self.resized(image)
-
-                # print('!!!!!!!!!!!', center_koord, radius_list)
-                # image = self.rotation(image, 30)
-                # image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                # flipped_image = cv2.flip(image, 1)
 
                 qt_image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_BGR888)
                 pic = qt_image.scaled(int(image.shape[1]*scale), int(image.shape[0]*scale), QtCore.Qt.KeepAspectRatio)
@@ -344,18 +366,19 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
 
 
-                if MW3 in range(len(factx)):
-                    if oldMW3 != MW3 and factx:
-                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
-                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
-                        self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
-                        oldMW3 = MW3
+                # if MW3 in range(len(factx)):
+                #     if oldMW3 != MW3 and factx:
+                #         self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
+                #         self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
+                #         self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
+                #         oldMW3 = MW3
 
 
 
 
     def stop(self):
-        self.PLC1.Stop_TCP_client()
+        # self.PLC1.Stop_TCP_client()
+        # self.thr1.cancel()
         self.thread_is_active = False
 
         self.quit()
