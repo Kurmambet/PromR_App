@@ -104,14 +104,29 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         print('real_radius', real_radius)
 
     def linePort_2(self):
-        global port1
-        port1 = int(self.lineEdit_2.text()[-3:])
 
+        teeeext = str(self.lineEdit_2.text()).split(':')
+
+        
+        print(teeeext)
+        global port1
+        port1 = int(teeeext[1])
 
         global ipAdr
-        ipAdr = self.lineEdit_2.text()[:9]
+        ipAdr = str(teeeext[0])
 
-        print('ip,port', ipAdr, port1)
+        print('ip', ipAdr,'port', port1)
+
+        # global port1
+        # port1 = int(self.lineEdit_2.text()[-3:])
+        #
+        # global ipAdr
+        # ipAdr = self.lineEdit_2.text()[:11]
+        #
+        # print('ip,port', ipAdr, port1)
+
+        # port1some = int(self.lineEdit_2.text())
+        # print(str(port1some))
 
     def valueChangesminR(self, value1):
         global minR
