@@ -1,3 +1,5 @@
+import time
+
 from sys import flags
 
 import sys
@@ -16,6 +18,17 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QGridLayout,
                              QRadioButton, QVBoxLayout,
                              QWidget, QSlider, QLabel, QMainWindow)
 
+
+
+import threading
+
+
+
+
+
+
+
+
 minR = maxR = 0
 param_1 = param_2 = 100
 scale = 0.9
@@ -28,8 +41,11 @@ BoxX = 10
 BoxRX = 20
 BoxY = 30
 BoxLEN = 40
+BoxDP = 1.00
+factx = []
+facty = []
 
-
+# stop_thread_update = False
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None, ):
         super(MainWindow, self).__init__(parent=parent)
@@ -45,6 +61,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.spinBoxY.valueChanged[int].connect(self.deBoxY)
         self.spinBoxRX.valueChanged[int].connect(self.deBoxRX)
         self.spinBoxLEN.valueChanged[int].connect(self.deBoxLEN)
+        self.doubleSpinBoxdp.valueChanged[float].connect(self.deBexDP)
+
 
         self.horizontalSlider_minR.valueChanged[int].connect(self.valueChangesminR)
         self.horizontalSlider_maxR.valueChanged[int].connect(self.valueChangesmaxR)
@@ -52,30 +70,42 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.horizontalSlider_param_2.valueChanged[int].connect(self.valueChanges_param_2)
         self.horizontalSlider_scale.valueChanged[int].connect(self.valueChangesScale)
 
+
+
+        thr1 = threading.Thread(target=self.myfunc, daemon=True).start()
+
+
+
+    def myfunc(self):
+        global factx, facty
+        while True:
+            self.factX.setText(str(factx))
+            self.factY.setText(str(facty))
+            time.sleep(1)
+
+    def deBexDP(self, valDP):
+        global BoxDP
+        BoxDP = valDP
+
     def deBoxLEN(self, valLEN):
         global BoxLEN
         BoxLEN = valLEN
-        print('LEN',BoxLEN)
 
     def deBoxRX(self, valRX):
         global BoxRX
         BoxRX = valRX
-        print('RX', BoxRX)
 
     def deBoxY(self, valY):
         global BoxY
         BoxY = valY
-        print('Y', BoxY)
 
     def deBoxX(self, valX):
         global BoxX
         BoxX = valX
-        print('X', BoxX)
 
     def comID(self,valu):
         global comportCAM
         comportCAM = valu
-        print('COM', comportCAM)
 
     def lineRadius(self):
         global real_radius
@@ -87,60 +117,65 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         port1 = int(self.lineEdit_2.text()[-3:])
 
 
-
         global ipAdr
         ipAdr = self.lineEdit_2.text()[:9]
 
         print('ip,port', ipAdr, port1)
 
-
     def valueChangesminR(self, value1):
         global minR
         minR = value1
-        print('minR', minR)
+        self.label_5.setText('minR ' + str(minR))
 
     def valueChangesmaxR(self, value2):
         global maxR
         maxR = value2
-        print('maxR',maxR)
+        self.label_2.setText('maxR ' + str(maxR))
 
     def valueChanges_param_1(self, value3):
         global param_1
         param_1 = value3
-        print('param_1', param_1)
+        self.label_3.setText('param1 ' + str(param_1))
 
     def valueChanges_param_2(self, value4):
         global param_2
         param_2 = value4
-        print('param_2', param_2)
+        self.label_4.setText('param2 ' + str(param_2))
 
     def valueChangesScale(self, value5):
         global scale
         scale = value5/500
-        print('scale', scale)
+        self.label_6.setText('scale ' + str(scale))
 
 
 
     def init_properties(self):
         self.stream_thread = Stream_thread()
 
-        
+
+
     def init_connections(self):
         self.stream_thread.change_pixmap.connect(self.image_label.setPixmap)
         self.start_stop_btn.clicked.connect(self.run_stop_video_streaming)
 
 
 
-
     @QtCore.pyqtSlot(bool)
     def run_stop_video_streaming(self):
-        
         if self.start_stop_btn.isChecked():
             self.stream_thread.start()
             self.update_button_style()
+
         else:
             self.stream_thread.stop()
             self.update_button_style()
+
+
+
+
+
+
+
     
     def update_button_style(self):
         if self.start_stop_btn.isChecked():
@@ -148,6 +183,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             icon_stop.addPixmap(QtGui.QPixmap(":/icons/icons/stop_video.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
             self.start_stop_btn.setIcon(icon_stop)
             self.start_stop_btn.setStyleSheet("border: 2px solid red; border-radius: 7px;")
+
         else:
             icon_run = QtGui.QIcon()
             icon_run.addPixmap(QtGui.QPixmap(":/icons/icons/run_video.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -162,6 +198,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 class Stream_thread(QtCore.QThread, Ui_MainWindow):
+
     change_pixmap = QtCore.pyqtSignal(QtGui.QPixmap)
 
 
@@ -169,8 +206,9 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
     def CirclesCenters(self, image):
         im = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         rows = im.shape[0]
-
-        circles = cv2.HoughCircles(im, cv2.HOUGH_GRADIENT, 1, rows / 8,
+        #param1 Верхний порог для детектора краёв
+        #param2 порог для центра окружностей в накопителе
+        circles = cv2.HoughCircles(im, cv2.HOUGH_GRADIENT, BoxDP, rows / 8,
                                    param1=param_1, param2=param_2,
                                    minRadius=minR, maxRadius=maxR)
         center_koord = []
@@ -185,7 +223,7 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
                 image = cv2.circle(image, center, 1, (0, 0, 255), 3)
                 # circle outline
                 radius = i[2]
-                image = cv2.circle(image, center, radius, (0, 255, 0), 3)
+                image = cv2.circle(image, center, radius, (0, 250, 0), 2)
                 radius_list.append(int(i[2]))
 
             # print('radius_list!!!!!', radius_list)
@@ -194,7 +232,7 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
         # return center_koord, radius_list
         return image, center_koord, radius_list
 
-    def incr_koord_dp(self, img, l, radius_list, real_radius, is_setting = 1):
+    def incr_koord_dp(self, img, l, radius_list, real_radius):
 
         # пикселей на мм по оси х и у
         # расчет абсолютных координат
@@ -204,14 +242,6 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
             x123.append(l[i][0])
             y123.append(l[i][1])
 
-        # if is_setting == 1:
-        #     print('absolutx', x123)
-        #     print('absoluty', y123)
-            #image = (np.zeros((img.shape[0], img.shape[1], 3), np.uint8))
-
-        # for j in range(len(l)):
-        #     image = cv2.circle(img,(int(x123[j]), int(y123[j])),1,(0, 0, 255), 10)
-        # cv2.imshow('image111111111111111111', resized(image, scale))
 
         # вычисление новых коорд относительно центра кадра
 
@@ -220,14 +250,14 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
         nolx = w // 2
         noly = h // 2
 
+        # image = cv2.circle(img, (nolx, noly), 1, (255, 0, 0), 5)
+        image = cv2.line(img, (nolx, 0),(nolx, h),  (255, 0, 0), 1)
+        image = cv2.line(img, (0, noly), (w, noly), (255, 0, 0), 1)
+
         for i in range(len(x123)):
             x123[i] = x123[i] - nolx
             y123[i] = y123[i] - noly
 
-        # if is_setting == 1:
-        #     print('середина кадра', nolx, noly)
-        #     print('centerx', x123)
-        #     print('centery', y123)
 
         factx = []
         facty = []
@@ -253,15 +283,15 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
                 rast_o_dot_mm.append((((factx[itr]) ** 2) + ((facty[itr]) ** 2)) ** 0.5)
 
-            if is_setting == 1:
-                print('\n')
-                print('Коэффициент отношения мм к пикселям', d_real_r)
-                print('x координаты в мм отн. центра кадра', factx)
-                print('y координаты в мм отн. центра кадра', facty)
 
-                print('координаты центра кадра в мм       ', mm_nolx, mm_noly)
-                print('расстояние до центров в пикселях   ', rast_o_dot_p)
-                print('расстояние до центров в мм         ', rast_o_dot_mm,'\n')
+            # print('\n')
+            # print('Коэффициент отношения мм к пикселям', d_real_r)
+            # print('x координаты в мм отн. центра кадра', factx)
+            # print('y координаты в мм отн. центра кадра', facty)
+            #
+            # print('координаты центра кадра в мм       ', mm_nolx, mm_noly)
+            # print('расстояние до центров в пикселях   ', rast_o_dot_p)
+            # print('расстояние до центров в мм         ', rast_o_dot_mm,'\n')
 
         else:
             facty = []
@@ -277,8 +307,7 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
         self.PLC1 = MODBUS_TCP_master()
         self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port = port1)
 
-        if self.PLC1:
-            flagCon = 1
+
 
         cap = cv2.VideoCapture(comportCAM)
         self.thread_is_active = True
@@ -295,8 +324,12 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
             ret, image = cap.read()
             if ret:
                 image, center_koord, radius_list = self.CirclesCenters(image)
+                global factx, facty
                 factx, facty = self.incr_koord_dp(image, center_koord, radius_list, real_radius)
-                print('factx, facty', factx, facty)
+
+
+
+                # print('factxxxxxxxx, facty', str(factx), str(facty))
                 #image = self.resized(image)
 
                 # print('!!!!!!!!!!!', center_koord, radius_list)
@@ -309,7 +342,9 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
                 pixmap = QtGui.QPixmap.fromImage(pic)
                 self.change_pixmap.emit(pixmap)
 
-                if flagCon == 1 and MW3 in range(len(factx)):
+
+
+                if MW3 in range(len(factx)):
                     if oldMW3 != MW3 and factx:
                         self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
                         self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
@@ -322,7 +357,9 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
     def stop(self):
         self.PLC1.Stop_TCP_client()
         self.thread_is_active = False
+
         self.quit()
+
        
          
 # def main():
