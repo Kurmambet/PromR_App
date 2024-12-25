@@ -1,4 +1,5 @@
 import time
+from numpy.ma.extras import average
 
 from sys import flags
 
@@ -44,6 +45,7 @@ BoxLEN = 40
 BoxDP = 1.00
 factx = []
 facty = []
+usrednenie_flag = False
 
 # stop_thread_update = False
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -62,6 +64,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.spinBoxRX.valueChanged[int].connect(self.deBoxRX)
         self.spinBoxLEN.valueChanged[int].connect(self.deBoxLEN)
         self.doubleSpinBoxdp.valueChanged[float].connect(self.deBexDP)
+        self.radioButton.clicked.connect(self.usrednen)
 
 
         self.horizontalSlider_minR.valueChanged[int].connect(self.valueChangesminR)
@@ -72,7 +75,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 
-
+    def usrednen(self):
+        global usrednenie_flag
+        if self.radioButton.isChecked():
+            usrednenie_flag = True
+        else:
+            usrednenie_flag = False
 
     def deBexDP(self, valDP):
         global BoxDP
@@ -101,21 +109,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def lineRadius(self):
         global real_radius
         real_radius = float(self.lineEdit.text())
-        print('real_radius', real_radius)
+        # print('real_radius', real_radius)
 
     def linePort_2(self):
 
         teeeext = str(self.lineEdit_2.text()).split(':')
 
-        
-        print(teeeext)
+
+        # print(teeeext)
         global port1
         port1 = int(teeeext[1])
 
         global ipAdr
         ipAdr = str(teeeext[0])
 
-        print('ip', ipAdr,'port', port1)
+        # print('ip', ipAdr,'port', port1)
 
         # global port1
         # port1 = int(self.lineEdit_2.text()[-3:])
@@ -212,6 +220,8 @@ class Modbus_Client_Server(QtCore.QThread):
 
     def run(self):
         oldMW3 = 0
+        self.averXnumber = 0
+        self.averYnumber = 0
         self.isConnectedMod = 0
         self.PLC1 = MODBUS_TCP_master()
 
@@ -220,15 +230,40 @@ class Modbus_Client_Server(QtCore.QThread):
 
         self.thread_is_active_MODBUS = True
         if self.isConnectedMod == 1:
+
             while self.thread_is_active_MODBUS:
                 MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
 
-                if MW3 in range(len(factx)):
-                    if oldMW3 != MW3 and factx:
-                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[MW3])
-                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[MW3])
-                        self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
-                        oldMW3 = MW3
+                if oldMW3 != MW3:
+                    if usrednenie_flag:
+                        averageX = set()
+                        averageY = set()
+                        self.averXnumber = factx[0]
+                        self.averYnumber = facty[0]
+
+                        for usr in range(40):
+                            if factx and facty and (self.averXnumber - 5 <= factx[0] <= self.averXnumber + 5) and (self.averYnumber - 5 <= facty[0] <= self.averYnumber + 5):
+                                averageX.add(factx[0])
+                                self.averXnumber = sum(averageX) / len(averageX)
+                                averageY.add(facty[0])
+                                self.averYnumber = sum(averageY) / len(averageY)
+                                time.sleep(0.05)
+                            else:
+                                time.sleep(0.05)
+
+                        print(self.averXnumber,len(averageX), averageX)
+                        print(self.averYnumber, len(averageY), averageY)
+
+                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=self.averXnumber)
+                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY,Register_value=self.averYnumber)
+                        #self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN,Register_value=len(factx))
+
+                    else:
+                        if factx and facty:
+                            self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[0])
+                            self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[0])
+                            #self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
+                    oldMW3 = MW3
         else:
             w.radioButtonMODBUS_START.setText('нет подключения ' + str(ipAdr) + ':' + str(port1))
 
@@ -278,6 +313,7 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
             # print('center_koord!!!!!', center_koord)
 
         # return center_koord, radius_list
+        center_koord = sorted(center_koord)
         return image, center_koord, radius_list
 
     def incr_koord_dp(self, img, l, radius_list, real_radius):
