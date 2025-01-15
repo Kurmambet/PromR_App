@@ -42,7 +42,8 @@ BoxX = 10
 BoxRX = 20
 BoxY = 30
 BoxLEN = 40
-BoxDP = 1.00
+Box_i_usr = 50
+cropping_val = 1
 factx = []
 facty = []
 usrednenie_flag = False
@@ -63,8 +64,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.spinBoxY.valueChanged[int].connect(self.deBoxY)
         self.spinBoxRX.valueChanged[int].connect(self.deBoxRX)
         self.spinBoxLEN.valueChanged[int].connect(self.deBoxLEN)
-        self.doubleSpinBoxdp.valueChanged[float].connect(self.deBexDP)
+        self.spinBox_i_usr.valueChanged[int].connect(self.deBox_i_averaging)
         self.radioButton.clicked.connect(self.usrednen)
+        self.spinBox_crop.valueChanged[int].connect(self.cropp)
 
 
         self.horizontalSlider_minR.valueChanged[int].connect(self.valueChangesminR)
@@ -79,12 +81,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         global usrednenie_flag
         if self.radioButton.isChecked():
             usrednenie_flag = True
+            self.radioButton.setText('усреднение'+'\n'+'включено')
         else:
             usrednenie_flag = False
+            self.radioButton.setText('усреднение' + '\n' + 'отключено')
+            self.factx_TEXT.setText('FactX')
+            self.factY_TEXT.setText('FactY')
 
-    def deBexDP(self, valDP):
-        global BoxDP
-        BoxDP = valDP
+    def cropp(self, val_crop):
+        global cropping_val
+        cropping_val = int(val_crop)
+
+
+    def deBox_i_averaging(self, val_i):
+        global Box_i_usr
+        Box_i_usr = val_i
+        self.label_i_usr.setText('iуср' + '\n' + 't=' + str(Box_i_usr * 0.05)[:3])
 
     def deBoxLEN(self, valLEN):
         global BoxLEN
@@ -159,7 +171,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def valueChangesScale(self, value5):
         global scale
         scale = value5/500
-        self.label_6.setText('scale ' + str(scale))
+        self.label_6.setText('scale ' + str(scale)[:4])
 
 
 
@@ -236,33 +248,39 @@ class Modbus_Client_Server(QtCore.QThread):
 
                 if oldMW3 != MW3:
                     if usrednenie_flag:
-                        averageX = set()
-                        averageY = set()
-                        self.averXnumber = factx[0]
-                        self.averYnumber = facty[0]
+                        averageX = []
+                        averageY = []
+                        if factx and facty:
+                            self.averXnumber = factx[0]
+                            self.averYnumber = facty[0]
 
-                        for usr in range(40):
+
+                        for usr in range(Box_i_usr):
                             if factx and facty and (self.averXnumber - 5 <= factx[0] <= self.averXnumber + 5) and (self.averYnumber - 5 <= facty[0] <= self.averYnumber + 5):
-                                averageX.add(factx[0])
+                                averageX.append(factx[0])
                                 self.averXnumber = sum(averageX) / len(averageX)
-                                averageY.add(facty[0])
+                                w.factx_TEXT.setText('factX:' + str(self.averXnumber)[:5])
+
+                                averageY.append(facty[0])
                                 self.averYnumber = sum(averageY) / len(averageY)
+                                w.factY_TEXT.setText('factY:'+ str(self.averYnumber)[:5])
                                 time.sleep(0.05)
+
                             else:
                                 time.sleep(0.05)
 
-                        print(self.averXnumber,len(averageX), averageX)
-                        print(self.averYnumber, len(averageY), averageY)
+                        # print(self.averXnumber,len(averageX), averageX)
+                        # print(self.averYnumber, len(averageY), averageY)
 
                         self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=self.averXnumber)
                         self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY,Register_value=self.averYnumber)
-                        #self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN,Register_value=len(factx))
+                        self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN,Register_value=len(factx))
 
                     else:
                         if factx and facty:
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[0])
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[0])
-                            #self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
+                            self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
                     oldMW3 = MW3
         else:
             w.radioButtonMODBUS_START.setText('нет подключения ' + str(ipAdr) + ':' + str(port1))
@@ -284,59 +302,95 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
     change_pixmap = QtCore.pyqtSignal(QtGui.QPixmap)
 
+    # def median_smoothing(self, current, previous):
+    #     if previous is None:
+    #         return current
+    #     return tuple(int(np.median([current[i], previous[i]])) for i in range(len(current)))
 
 
     def CirclesCenters(self, image):
+
         im = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        im = cv2.GaussianBlur(im, (9, 9), 2)  # Применение Гауссового размытия
         rows = im.shape[0]
-        #param1 Верхний порог для детектора краёв
-        #param2 порог для центра окружностей в накопителе
-        circles = cv2.HoughCircles(im, cv2.HOUGH_GRADIENT, BoxDP, rows / 8,
+        circles = cv2.HoughCircles(im, cv2.HOUGH_GRADIENT, 1, int(rows / 8),
                                    param1=param_1, param2=param_2,
                                    minRadius=minR, maxRadius=maxR)
         center_koord = []
-        radius_list = []
+
+        current_centers = []
+
         if circles is not None:
             circles = np.uint16(np.around(circles))
+
             for i in circles[0, :]:
-                center = (i[0], i[1])
-                center_koord.append(list(map(int, center)))
+                center = (i[0], i[1], i[2])  # (x, y, radius)
 
-                # circle center
-                image = cv2.circle(image, center, 1, (0, 0, 255), 3)
-                # circle outline
-                radius = i[2]
-                image = cv2.circle(image, center, radius, (0, 250, 0), 2)
-                radius_list.append(int(i[2]))
+                # Фильтрация по радиусу
+                if minR <= center[2] <= maxR:
+                    current_centers.append(center)
 
-            # print('radius_list!!!!!', radius_list)
-            # print('center_koord!!!!!', center_koord)
+                    # Сглаживание координат и радиуса
+                    if len(self.prev_center_koord) > 0:
+                        # Найти ближайшую предыдущую окружность
+                        distances = [np.linalg.norm(np.array(center[0:2]) - np.array(prev[0:2])) for prev in
+                                     self.prev_center_koord]
+                        closest_index = np.argmin(distances)
+                        closest_distance = distances[closest_index]
 
-        # return center_koord, radius_list
-        center_koord = sorted(center_koord)
-        return image, center_koord, radius_list
+                        # Убедитесь, что ближайшая окружность достаточно близка
+                        if closest_distance < 50:  # Пороговое значение для расстояния
+                            closest_prev = self.prev_center_koord[closest_index]
 
-    def incr_koord_dp(self, img, l, radius_list, real_radius):
+                            center = (
+                                int(self.smoothing_factor * center[0] + (1 - self.smoothing_factor) * closest_prev[0]),
+                                int(self.smoothing_factor * center[1] + (1 - self.smoothing_factor) * closest_prev[1]),
+                                int(self.smoothing_factor * center[2] + (1 - self.smoothing_factor) * closest_prev[2])
+                            )
+
+                    # Отрисовка центра и окружности
+                    image = cv2.circle(image, center[0:-1], 1, (0, 0, 255), 3)
+                    image = cv2.circle(image, center[0:-1], center[-1], (0, 250, 0), 2)
+                    center_koord.append(list(map(int, center)))
+
+            center_koord = sorted(center_koord)
+
+            if len(center_koord) != 0:
+                image = cv2.circle(image, (center_koord[0][0], center_koord[0][1]), center_koord[0][2], (255, 0, 0), 5)
+
+            # Обновляем предыдущие значения
+            self.prev_center_koord = current_centers
+            self.prev_radius_list = [c[2] for c in current_centers]
+        else:
+            # Если окружности не найдены, сбрасываем предыдущие значения
+            self.prev_center_koord = []
+            self.prev_radius_list = []
+
+        return image, center_koord
+
+    def incr_koord_dp(self, img, l, real_radius):
 
         # пикселей на мм по оси х и у
         # расчет абсолютных координат
         x123 = []
         y123 = []
+        radius_list = []
         for i in range(len(l)):
             x123.append(l[i][0])
             y123.append(l[i][1])
+            radius_list.append(l[i][2])
 
 
         # вычисление новых коорд относительно центра кадра
 
-        (h, w) = img.shape[:2]
+        h, w = img.shape[:2]
 
         nolx = w // 2
         noly = h // 2
 
         # image = cv2.circle(img, (nolx, noly), 1, (255, 0, 0), 5)
-        image = cv2.line(img, (nolx, 0),(nolx, h),  (255, 0, 0), 1)
-        image = cv2.line(img, (0, noly), (w, noly), (255, 0, 0), 1)
+        cv2.line(img, (nolx, 0),(nolx, h),  (255, 0, 0), 2)
+        cv2.line(img, (0, noly), (w, noly), (255, 0, 0), 2)
 
         for i in range(len(x123)):
             x123[i] = x123[i] - nolx
@@ -390,27 +444,42 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
             w.factY.setText(str(facty))
 
 
+
+
     def run(self):
+        # Инициализация предыдущих координат и радиусов
+
+        self.prev_center_koord = []
+        self.prev_radius_list = []
+        self.smoothing_factor = 0.5  # Параметр сглаживания
+        # self.position_threshold = 10  # Порог для устранения выбросов
 
         cap = cv2.VideoCapture(comportCAM)
         self.thread_is_active = True
 
         while self.thread_is_active:
-
             ret, image = cap.read()
             if ret:
-                image, center_koord, radius_list = self.CirclesCenters(image)
+
+                # Проверяем, достаточно ли размер кадра для обрезки
+                if (cropping_val > 1) and (image.shape[0] > 2 * cropping_val) and (image.shape[1] > 2 * cropping_val):
+                    # Обрезаем кадр равномерно со всех сторон
+                    image = image[cropping_val:image.shape[0] - cropping_val, cropping_val:image.shape[1] - cropping_val]
+
+                #     # Если кадр слишком мал для обрезки, просто оставляем его как есть
+
+                image, center_koord = self.CirclesCenters(image)
+
                 global factx, facty
-                factx, facty = self.incr_koord_dp(image, center_koord, radius_list, real_radius)
+                factx, facty = self.incr_koord_dp(image, center_koord, real_radius)
 
                 self.thr1 = threading.Thread(target=self.show_koords, daemon=True).start()
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-
-                qt_image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_BGR888)
+                qt_image = QtGui.QImage(image.data, image.shape[1], image.shape[0], image.strides[0], QtGui.QImage.Format_RGB888)
                 pic = qt_image.scaled(int(image.shape[1]*scale), int(image.shape[0]*scale), QtCore.Qt.KeepAspectRatio)
                 pixmap = QtGui.QPixmap.fromImage(pic)
                 self.change_pixmap.emit(pixmap)
-
 
 
     def stop(self):
