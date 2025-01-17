@@ -43,7 +43,7 @@ BoxRX = 20
 BoxY = 30
 BoxLEN = 40
 Box_i_usr = 50
-cropping_val = 1
+cropping_val = 0
 factx = []
 facty = []
 usrednenie_flag = False
@@ -73,7 +73,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.horizontalSlider_maxR.valueChanged[int].connect(self.valueChangesmaxR)
         self.horizontalSlider_param_1.valueChanged[int].connect(self.valueChanges_param_1)
         self.horizontalSlider_param_2.valueChanged[int].connect(self.valueChanges_param_2)
-        self.horizontalSlider_scale.valueChanged[int].connect(self.valueChangesScale)
+        # self.horizontalSlider_scale.valueChanged[int].connect(self.valueChangesScale)
+        self.spinBox_scale.valueChanged[int].connect(self.valueChangesScale)
 
 
 
@@ -171,7 +172,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def valueChangesScale(self, value5):
         global scale
         scale = value5/500
-        self.label_6.setText('scale ' + str(scale)[:4])
+        # print(value5, scale)
+        # self.label_6.setText('scale ' + str(scale)[:4])
 
 
 
