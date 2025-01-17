@@ -17,16 +17,11 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QGridLayout,
                              QGroupBox, QMenu, QPushButton,
                              QRadioButton, QVBoxLayout,
-                             QWidget, QSlider, QLabel, QMainWindow)
+                             QWidget, QSlider, QLabel, QMainWindow, QFileDialog)
 
 
 
 import threading
-
-
-
-
-
 
 
 
@@ -48,7 +43,7 @@ factx = []
 facty = []
 usrednenie_flag = False
 
-# stop_thread_update = False
+
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None, ):
         super(MainWindow, self).__init__(parent=parent)
@@ -73,9 +68,87 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.horizontalSlider_maxR.valueChanged[int].connect(self.valueChangesmaxR)
         self.horizontalSlider_param_1.valueChanged[int].connect(self.valueChanges_param_1)
         self.horizontalSlider_param_2.valueChanged[int].connect(self.valueChanges_param_2)
-        # self.horizontalSlider_scale.valueChanged[int].connect(self.valueChangesScale)
-        self.spinBox_scale.valueChanged[int].connect(self.valueChangesScale)
 
+        self.spinBox_scale.valueChanged[int].connect(self.valueChangesScale)
+        self.pushButton_open.clicked.connect(self.open_file)
+        self.pushButton_save.clicked.connect(self.save_file)
+
+
+
+    def save_file(self):
+        # print('save')
+
+        saving_data = {
+            'minR' : minR,
+            'maxR' : maxR,
+            'param_1' : param_1,
+            'param_2' : param_2,
+            'scale' : scale,
+            'port1' : port1,
+            'ipAdr' : ipAdr,
+            'real_radius' : real_radius,
+            'comportCAM' : comportCAM,
+            'BoxX' : BoxX,
+            'BoxRX' : BoxRX,
+            'BoxY' : BoxY,
+            'BoxLEN' : BoxLEN,
+            'Box_i_usr' : Box_i_usr,
+            'cropping_val' : cropping_val,
+        }
+
+
+        file_name, _trd = QFileDialog.getSaveFileName(self, "Save File", "", "Text Files (*.txt);;All Files (*)",
+                                                   options=QFileDialog.Options())
+        if file_name:
+            with open(file_name, 'w', encoding='utf-8') as file:
+
+                for i in saving_data:
+                    # print(i, saving_data[i], type(saving_data[i]))
+                    file.write(i + ' ' + str(saving_data[i]) + '\n')
+
+        file.close()
+        del saving_data
+
+
+    def open_file(self):
+        # print('open')
+        fname = QFileDialog.getOpenFileName(self,'Open file', '', 'Text Files (*.txt);;All Files (*)')
+
+        if fname:
+            # print(fname[0])
+            # f = open(fname[0],'r',encoding='utf-8')
+            new_data = dict()
+            try:
+                with open(fname[0],'r',encoding='utf-8') as f:
+                    for i in f:
+                        file = i.split(' ')
+                        new_data[file[0]] = file[1][:-1]
+                        # print(file[0], file[1][:-1])
+            except FileNotFoundError:
+                self.pushButton_open.setText('NOT FOUND\nBLYAT')
+
+
+            self.horizontalSlider_minR.setProperty("value", int(new_data['minR']))
+            self.horizontalSlider_maxR.setProperty("value",int(new_data['maxR']))
+            self.horizontalSlider_param_1.setProperty("value", int(new_data['param_1']))
+            self.horizontalSlider_param_2.setProperty("value", int(new_data['param_2']))
+            self.spinBox_scale.setProperty("value", int(float(new_data['scale']) * 500))
+
+            global port1, ipAdr, real_radius
+            port1 = int(new_data['port1'])
+            ipAdr = str(new_data['ipAdr'])
+            real_radius = float(new_data['real_radius'])
+
+            self.spinBoxCOMPORT.setProperty("value", int(new_data['comportCAM']))
+            self.spinBoxX.setProperty("value", int(new_data['BoxX']))
+            self.spinBoxRX.setProperty("value", int(new_data['BoxRX']))
+            self.spinBoxY.setProperty("value", int(new_data['BoxY']))
+            self.spinBoxLEN.setProperty("value", int(new_data['BoxLEN']))
+            self.spinBox_i_usr.setProperty("value", int(new_data['Box_i_usr']))
+            self.spinBox_crop.setProperty("value",int(new_data['cropping_val']))
+
+            del new_data
+            f.close()
 
 
     def usrednen(self):
@@ -92,7 +165,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def cropp(self, val_crop):
         global cropping_val
         cropping_val = int(val_crop)
-
 
     def deBox_i_averaging(self, val_i):
         global Box_i_usr
@@ -181,7 +253,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.stream_thread = Stream_thread()
         self.Modbus_C_S = Modbus_Client_Server()
 
-
     def init_connections(self):
         self.stream_thread.change_pixmap.connect(self.image_label.setPixmap)
         self.start_stop_btn.clicked.connect(self.run_stop_video_streaming)
@@ -206,13 +277,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.stream_thread.stop()
             self.update_button_style()
 
-
-
-
-
-
-
-    
     def update_button_style(self):
         if self.start_stop_btn.isChecked():
             icon_stop = QtGui.QIcon()
@@ -297,6 +361,7 @@ class Modbus_Client_Server(QtCore.QThread):
             self.PLC1.Stop_TCP_client_ChutChut()
 
         self.quit()
+
 
 
 
@@ -440,17 +505,14 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
         return factx, facty
 
     def show_koords(self):
-
         if factx and facty:
             w.factX.setText(str(factx))
             w.factY.setText(str(facty))
 
 
-
-
     def run(self):
         # Инициализация предыдущих координат и радиусов
-
+        print('!!!!', ipAdr, port1, real_radius)
         self.prev_center_koord = []
         self.prev_radius_list = []
         self.smoothing_factor = 0.5  # Параметр сглаживания
