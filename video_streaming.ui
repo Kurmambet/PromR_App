@@ -389,32 +389,41 @@ border-radius: 7px;
                 <widget class="QSpinBox" name="spinBoxCOMPORT"/>
                </item>
                <item row="5" column="0">
-                <widget class="QLabel" name="label_dp">
+                <widget class="QLabel" name="label_i_usr">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
                   </font>
                  </property>
                  <property name="text">
-                  <string>dp</string>
+                  <string>i уср.</string>
                  </property>
                 </widget>
                </item>
                <item row="5" column="1">
-                <widget class="QDoubleSpinBox" name="doubleSpinBoxdp">
-                 <property name="decimals">
-                  <number>2</number>
-                 </property>
+                <widget class="QSpinBox" name="spinBox_i_usr">
                  <property name="minimum">
-                  <double>1.000000000000000</double>
+                  <number>10</number>
                  </property>
                  <property name="maximum">
-                  <double>9.990000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>0.010000000000000</double>
+                  <number>200</number>
                  </property>
                 </widget>
+               </item>
+               <item row="6" column="0">
+                <widget class="QLabel" name="label_crop">
+                 <property name="font">
+                  <font>
+                   <pointsize>10</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>crop</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="1">
+                <widget class="QSpinBox" name="spinBox_crop"/>
                </item>
               </layout>
              </item>
@@ -693,6 +702,18 @@ border-radius: 7px;
                 </property>
                </widget>
               </item>
+              <item row="13" column="1">
+               <widget class="QLabel" name="factX">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>koord</string>
+                </property>
+               </widget>
+              </item>
               <item row="14" column="0">
                <widget class="QLabel" name="factY_TEXT">
                 <property name="maximumSize">
@@ -714,18 +735,6 @@ border-radius: 7px;
                 </property>
                 <property name="margin">
                  <number>0</number>
-                </property>
-               </widget>
-              </item>
-              <item row="13" column="1">
-               <widget class="QLabel" name="factX">
-                <property name="font">
-                 <font>
-                  <pointsize>10</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>koord</string>
                 </property>
                </widget>
               </item>
