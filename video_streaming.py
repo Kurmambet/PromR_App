@@ -321,32 +321,46 @@ class Modbus_Client_Server(QtCore.QThread):
                             self.averYnumber = facty[0]
 
 
-                        for usr in range(Box_i_usr):
-                            if factx and facty and (self.averXnumber - 5 <= factx[0] <= self.averXnumber + 5) and (self.averYnumber - 5 <= facty[0] <= self.averYnumber + 5):
-                                averageX.append(factx[0])
-                                self.averXnumber = sum(averageX) / len(averageX)
-                                w.factx_TEXT.setText('factX:' + str(self.averXnumber)[:5])
+                            for usr in range(Box_i_usr):
+                                if factx and facty and (self.averXnumber - 5 <= factx[0] <= self.averXnumber + 5) and (self.averYnumber - 5 <= facty[0] <= self.averYnumber + 5):
+                                    averageX.append(factx[0])
+                                    self.averXnumber = sum(averageX) / len(averageX)
+                                    w.factx_TEXT.setText('factX:' + str(self.averXnumber)[:5])
 
-                                averageY.append(facty[0])
-                                self.averYnumber = sum(averageY) / len(averageY)
-                                w.factY_TEXT.setText('factY:'+ str(self.averYnumber)[:5])
-                                time.sleep(0.05)
+                                    averageY.append(facty[0])
+                                    self.averYnumber = sum(averageY) / len(averageY)
+                                    w.factY_TEXT.setText('factY:'+ str(self.averYnumber)[:5])
+                                    time.sleep(0.05)
 
-                            else:
-                                time.sleep(0.05)
+                                else:
+                                    time.sleep(0.05)
 
-                        # print(self.averXnumber,len(averageX), averageX)
-                        # print(self.averYnumber, len(averageY), averageY)
+                            # print(self.averXnumber,len(averageX), averageX)
+                            # print(self.averYnumber, len(averageY), averageY)
 
-                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=self.averXnumber)
-                        self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY,Register_value=self.averYnumber)
-                        self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN,Register_value=len(factx))
+                            self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=self.averXnumber)
+                            self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY,Register_value=self.averYnumber)
+                            self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN,Register_value=len(factx))
+                        else:
+                            self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=0)
+                            self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=0)
+                            self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=0)
+                            w.factx_TEXT.setText('factX:' + str(0))
+                            w.factY_TEXT.setText('factY:' + str(0))
+
+
 
                     else:
                         if factx and facty:
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=factx[0])
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=facty[0])
                             self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=len(factx))
+                        else:
+                            self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN, Register_value=0)
+                            self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=0)
+                            self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=0)
+
+
                     oldMW3 = MW3
         else:
             w.radioButtonMODBUS_START.setText('нет подключения ' + str(ipAdr) + ':' + str(port1))
@@ -512,7 +526,7 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
     def run(self):
         # Инициализация предыдущих координат и радиусов
-        print('!!!!', ipAdr, port1, real_radius)
+
         self.prev_center_koord = []
         self.prev_radius_list = []
         self.smoothing_factor = 0.5  # Параметр сглаживания

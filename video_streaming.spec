@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['D:\\programirovanie\\NEWPYTHONPROJECT\\.venv\\iconka.ico'],
+    icon=['D:\\programming\\new\\.venv\\iconka.ico'],
 )
