@@ -1,26 +1,11 @@
 import time
-from numpy.ma.extras import average
-
-from sys import flags
-
 import sys
 import numpy as np
-from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
-from numpy.ma.core import resize
-
 from UI_video_streaming import Ui_MainWindow
 from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
 from MODBUS_TCP_CLIENT import *
-
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QApplication, QCheckBox, QGridLayout,
-                             QGroupBox, QMenu, QPushButton,
-                             QRadioButton, QVBoxLayout,
-                             QWidget, QSlider, QLabel, QMainWindow, QFileDialog)
-
-
-
+from PyQt5.QtWidgets import QFileDialog
 import threading
 
 
@@ -101,9 +86,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                                    options=QFileDialog.Options())
         if file_name:
             with open(file_name, 'w', encoding='utf-8') as file:
-
                 for i in saving_data:
-                    # print(i, saving_data[i], type(saving_data[i]))
                     file.write(i + ' ' + str(saving_data[i]) + '\n')
 
         file.close()
@@ -111,22 +94,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
     def open_file(self):
-        # print('open')
         fname = QFileDialog.getOpenFileName(self,'Open file', '', 'Text Files (*.txt);;All Files (*)')
-
         if fname:
-            # print(fname[0])
-            # f = open(fname[0],'r',encoding='utf-8')
             new_data = dict()
             try:
                 with open(fname[0],'r',encoding='utf-8') as f:
                     for i in f:
                         file = i.split(' ')
                         new_data[file[0]] = file[1][:-1]
-                        # print(file[0], file[1][:-1])
             except FileNotFoundError:
                 self.pushButton_open.setText('NOT FOUND\nBLYAT')
-
 
             self.horizontalSlider_minR.setProperty("value", int(new_data['minR']))
             self.horizontalSlider_maxR.setProperty("value",int(new_data['maxR']))
@@ -194,32 +171,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def lineRadius(self):
         global real_radius
         real_radius = float(self.lineEdit.text())
-        # print('real_radius', real_radius)
 
     def linePort_2(self):
-
         teeeext = str(self.lineEdit_2.text()).split(':')
-
-
-        # print(teeeext)
         global port1
         port1 = int(teeeext[1])
-
         global ipAdr
         ipAdr = str(teeeext[0])
-
-        # print('ip', ipAdr,'port', port1)
-
-        # global port1
-        # port1 = int(self.lineEdit_2.text()[-3:])
-        #
-        # global ipAdr
-        # ipAdr = self.lineEdit_2.text()[:11]
-        #
-        # print('ip,port', ipAdr, port1)
-
-        # port1some = int(self.lineEdit_2.text())
-        # print(str(port1some))
 
     def valueChangesminR(self, value1):
         global minR
@@ -244,10 +202,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def valueChangesScale(self, value5):
         global scale
         scale = value5/500
-        # print(value5, scale)
-        # self.label_6.setText('scale ' + str(scale)[:4])
-
-
 
     def init_properties(self):
         self.stream_thread = Stream_thread()
@@ -295,23 +249,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 class Modbus_Client_Server(QtCore.QThread):
 
-
     def run(self):
         oldMW3 = 0
         self.averXnumber = 0
         self.averYnumber = 0
         self.isConnectedMod = 0
         self.PLC1 = MODBUS_TCP_master()
-
         self.isConnectedMod = self.PLC1.Start_TCP_client(IP_address=ipAdr, TCP_port=port1)
-
-
         self.thread_is_active_MODBUS = True
-        if self.isConnectedMod == 1:
 
+        if self.isConnectedMod == 1:
             while self.thread_is_active_MODBUS:
                 MW3 = self.PLC1.Read_holding_register_uint16(Register_address=BoxRX)
-
                 if oldMW3 != MW3:
                     if usrednenie_flag:
                         averageX = []
@@ -319,7 +268,6 @@ class Modbus_Client_Server(QtCore.QThread):
                         if factx and facty:
                             self.averXnumber = factx[0]
                             self.averYnumber = facty[0]
-
 
                             for usr in range(Box_i_usr):
                                 if factx and facty and (self.averXnumber - 5 <= factx[0] <= self.averXnumber + 5) and (self.averYnumber - 5 <= facty[0] <= self.averYnumber + 5):
@@ -335,9 +283,6 @@ class Modbus_Client_Server(QtCore.QThread):
                                 else:
                                     time.sleep(0.05)
 
-                            # print(self.averXnumber,len(averageX), averageX)
-                            # print(self.averYnumber, len(averageY), averageY)
-
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=self.averXnumber)
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY,Register_value=self.averYnumber)
                             self.PLC1.Write_multiple_holding_register_uint16(Register_address=BoxLEN,Register_value=len(factx))
@@ -347,8 +292,6 @@ class Modbus_Client_Server(QtCore.QThread):
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=0)
                             w.factx_TEXT.setText('factX:' + str(0))
                             w.factY_TEXT.setText('factY:' + str(0))
-
-
 
                     else:
                         if factx and facty:
@@ -360,37 +303,24 @@ class Modbus_Client_Server(QtCore.QThread):
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxX, Register_value=0)
                             self.PLC1.Write_multiple_holding_register_float32(Register_address=BoxY, Register_value=0)
 
-
                     oldMW3 = MW3
         else:
             w.radioButtonMODBUS_START.setText('нет подключения ' + str(ipAdr) + ':' + str(port1))
 
 
-
     def stop_Modbus(self):
         self.thread_is_active_MODBUS = False
-        # self.PLC1.Stop_TCP_client()
-
         if self.isConnectedMod == 1:
             self.PLC1.Stop_TCP_client_ChutChut()
-
         self.quit()
 
 
 
 
 class Stream_thread(QtCore.QThread, Ui_MainWindow):
-
     change_pixmap = QtCore.pyqtSignal(QtGui.QPixmap)
 
-    # def median_smoothing(self, current, previous):
-    #     if previous is None:
-    #         return current
-    #     return tuple(int(np.median([current[i], previous[i]])) for i in range(len(current)))
-
-
     def CirclesCenters(self, image):
-
         im = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         im = cv2.GaussianBlur(im, (9, 9), 2)  # Применение Гауссового размытия
         rows = im.shape[0]
@@ -398,12 +328,10 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
                                    param1=param_1, param2=param_2,
                                    minRadius=minR, maxRadius=maxR)
         center_koord = []
-
         current_centers = []
 
         if circles is not None:
             circles = np.uint16(np.around(circles))
-
             for i in circles[0, :]:
                 center = (i[0], i[1], i[2])  # (x, y, radius)
 
@@ -419,7 +347,7 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
                         closest_index = np.argmin(distances)
                         closest_distance = distances[closest_index]
 
-                        # Убедитесь, что ближайшая окружность достаточно близка
+                        # Убеждаемся, что ближайшая окружность достаточно близка
                         if closest_distance < 50:  # Пороговое значение для расстояния
                             closest_prev = self.prev_center_koord[closest_index]
 
@@ -463,13 +391,10 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
 
         # вычисление новых коорд относительно центра кадра
-
         h, w = img.shape[:2]
-
         nolx = w // 2
         noly = h // 2
 
-        # image = cv2.circle(img, (nolx, noly), 1, (255, 0, 0), 5)
         cv2.line(img, (nolx, 0),(nolx, h),  (255, 0, 0), 2)
         cv2.line(img, (0, noly), (w, noly), (255, 0, 0), 2)
 
@@ -526,12 +451,9 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
 
     def run(self):
         # Инициализация предыдущих координат и радиусов
-
         self.prev_center_koord = []
         self.prev_radius_list = []
         self.smoothing_factor = 0.5  # Параметр сглаживания
-        # self.position_threshold = 10  # Порог для устранения выбросов
-
         cap = cv2.VideoCapture(comportCAM)
         self.thread_is_active = True
 
@@ -544,7 +466,7 @@ class Stream_thread(QtCore.QThread, Ui_MainWindow):
                     # Обрезаем кадр равномерно со всех сторон
                     image = image[cropping_val:image.shape[0] - cropping_val, cropping_val:image.shape[1] - cropping_val]
 
-                #     # Если кадр слишком мал для обрезки, просто оставляем его как есть
+                # Если кадр слишком мал для обрезки, просто оставляем его как есть
 
                 image, center_koord = self.CirclesCenters(image)
 
@@ -571,5 +493,4 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = MainWindow()
     w.show()
-
     sys.exit(app.exec_())

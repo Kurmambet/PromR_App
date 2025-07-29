@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['D:\\programming\\new\\.venv\\iconka.ico'],
+    icon=['C:\\sharaga\\DIPLOMM\\promr_app\\PromR_App\\iconka.ico'],
 )

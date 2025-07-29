@@ -14,7 +14,7 @@
    <string>Video Streaming using OpenCV</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../../QT_PRILOZENIYA/Video-Streaming-in-PyQt-using-OpenCV-master/Video-Streaming-in-PyQt-using-OpenCV-master/.venv/icons.qrc">
+   <iconset resource="./icons.qrc">
     <normaloff>:/icons/icons/video_streaming.png</normaloff>:/icons/icons/video_streaming.png</iconset>
   </property>
   <property name="styleSheet">
@@ -297,7 +297,7 @@ border-radius: 7px;
                 <string/>
                </property>
                <property name="icon">
-                <iconset resource="../../QT_PRILOZENIYA/Video-Streaming-in-PyQt-using-OpenCV-master/Video-Streaming-in-PyQt-using-OpenCV-master/.venv/icons.qrc">
+                <iconset resource="./icons.qrc">
                  <normaloff>:/icons/icons/run_video.png</normaloff>:/icons/icons/run_video.png</iconset>
                </property>
                <property name="iconSize">
@@ -838,7 +838,7 @@ border-radius: 7px;
   </action>
  </widget>
  <resources>
-  <include location="../../QT_PRILOZENIYA/Video-Streaming-in-PyQt-using-OpenCV-master/Video-Streaming-in-PyQt-using-OpenCV-master/.venv/icons.qrc"/>
+  <include location="./icons.qrc"/>
  </resources>
  <connections/>
 </ui>

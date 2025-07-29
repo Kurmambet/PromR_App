@@ -445,7 +445,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "Video Streaming using OpenCV"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Prom robot app"))
         self.radioButtonMODBUS_START.setText(_translate("MainWindow", "start"))
         self.application_name_label.setText(_translate("MainWindow", "Modbus port:"))
         self.lineEdit_2.setInputMask(_translate("MainWindow", "000.000.000.000:0000"))

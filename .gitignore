@@ -1,2 +1,7 @@
 # created by virtualenv automatically
-*
+__pycache__/
+build/
+dist/
+venv/
+video_streaming.spec
+
