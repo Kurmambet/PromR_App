@@ -1,0 +1,20 @@
+[project]
+name = "promr-app"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "altgraph==0.17.5",
+    "numpy==2.4.4",
+    "opencv-python==4.13.0.92",
+    "packaging==26.2",
+    "pefile==2024.8.26",
+    "pyinstaller==6.20.0",
+    "pyinstaller-hooks-contrib==2026.4",
+    "pyqt5>=5.15.11",
+    "pyqt5-qt5==5.15.2",
+    "pyqt5-sip==12.18.0",
+    "pywin32-ctypes==0.2.3",
+    "setuptools==82.0.1",
+]
