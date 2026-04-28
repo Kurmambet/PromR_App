@@ -27,7 +27,7 @@ factx = []
 facty = []
 usrednenie_flag = False
 
-# [FIX] Мьютекс для безопасного доступа к factx/facty из двух потоков
+# Мьютекс для безопасного доступа к factx/facty из двух потоков
 data_lock = threading.Lock()
 
 
@@ -93,18 +93,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             with open(file_name, "w", encoding="utf-8") as file:
                 for key, value in saving_data.items():
                     file.write(key + " " + str(value) + "\n")
-        # [FIX] Убран file.close() — 'with' уже закрывает файл автоматически.
-        #        В оригинале вызов file.close() вне 'with' приводил к NameError
-        #        если пользователь нажимал Отмена в диалоге.
 
     def open_file(self):
         fname = QFileDialog.getOpenFileName(
             self, "Open file", "", "Text Files (*.txt);;All Files (*)"
         )
-        # [FIX] Проверяем fname[0], а не fname.
-        #        getOpenFileName возвращает кортеж ('путь', 'фильтр').
-        #        При отмене возвращает ('', ''), но кортеж ('', '') — истинный,
-        #        поэтому оригинальный 'if fname:' всегда True и пытался открыть ''
+
         if fname[0]:
             new_data = dict()
             try:
@@ -116,7 +110,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             except FileNotFoundError:
                 self.pushButton_open.setText("NOT FOUND\nBLYAT")
                 return
-            # [FIX] Убран f.close() — лишний, 'with' уже закрывает файл.
 
             try:
                 self.horizontalSlider_minR.setProperty("value", int(new_data["minR"]))
@@ -226,9 +219,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def init_connections(self):
         self.stream_thread.change_pixmap.connect(self.image_label.setPixmap)
-        # [FIX] Подключаем новые сигналы из потоков к виджетам главного потока.
-        #        В оригинале setText вызывался напрямую из рабочих потоков —
-        #        это запрещено в Qt и приводит к случайным крэшам.
         self.stream_thread.update_factx.connect(self.factX.setText)
         self.stream_thread.update_facty.connect(self.factY.setText)
         self.Modbus_C_S.update_factx_text.connect(self.factx_TEXT.setText)
@@ -282,16 +272,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 class Modbus_Client_Server(QtCore.QThread):
-    # [FIX] Сигналы для безопасного обновления UI из рабочего потока.
-    #        В оригинале setText вызывался напрямую — крэш на любой ОС.
     update_factx_text = QtCore.pyqtSignal(str)
     update_facty_text = QtCore.pyqtSignal(str)
     update_modbus_btn = QtCore.pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
-        # [FIX] Инициализируем атрибуты в __init__, а не только в run().
-        #        В оригинале вызов stop_Modbus() до start() бросал AttributeError.
         self.thread_is_active_MODBUS = False
         self.isConnectedMod = 0
         self.PLC1 = None
@@ -316,8 +302,6 @@ class Modbus_Client_Server(QtCore.QThread):
                         averageX = []
                         averageY = []
 
-                        # [FIX] Копируем списки под мьютексом, чтобы избежать
-                        #        гонки данных с Stream_thread (который пишет factx/facty).
                         with data_lock:
                             local_factx = list(factx)
                             local_facty = list(facty)
@@ -347,7 +331,6 @@ class Modbus_Client_Server(QtCore.QThread):
                                 ):
                                     averageX.append(local_factx[0])
                                     self.averXnumber = sum(averageX) / len(averageX)
-                                    # [FIX] Сигнал вместо прямого w.factx_TEXT.setText(...)
                                     self.update_factx_text.emit(
                                         "factX:" + str(self.averXnumber)[:5]
                                     )
@@ -409,11 +392,8 @@ class Modbus_Client_Server(QtCore.QThread):
 
                     oldMW3 = MW3
 
-                # [FIX] Пауза в основном цикле. В оригинале поток крутился в
-                #        busy-wait и грузил CPU на 100% когда MW3 не менялся.
                 time.sleep(0.01)
         else:
-            # [FIX] Сигнал вместо прямого w.radioButtonMODBUS_START.setText(...)
             self.update_modbus_btn.emit(
                 "нет подключения " + str(ipAdr) + ":" + str(port1)
             )
@@ -422,19 +402,12 @@ class Modbus_Client_Server(QtCore.QThread):
         self.thread_is_active_MODBUS = False
         if self.isConnectedMod == 1 and self.PLC1 is not None:
             self.PLC1.Stop_TCP_client_ChutChut()
-        # [FIX] wait() вместо quit(). quit() останавливает только Qt event loop
-        #        (exec_()), которого здесь нет — поток с while-циклом через
-        #        quit() не останавливается. wait() ждёт реального завершения.
         self.wait()
 
 
-# [FIX] Убрано наследование от Ui_MainWindow — рабочий поток не должен
-#        наследовать класс виджетов. Это создавало конфликты атрибутов.
 class Stream_thread(QtCore.QThread):
     change_pixmap = QtCore.pyqtSignal(QtGui.QPixmap)
-    # [FIX] Новые сигналы для обновления factX/factY в главном потоке.
-    #        В оригинале это делалось через threading.Thread(target=show_koords)
-    #        — новый поток на каждый кадр (30 потоков/сек!) и прямой доступ к UI.
+
     update_factx = QtCore.pyqtSignal(str)
     update_facty = QtCore.pyqtSignal(str)
 
@@ -531,8 +504,6 @@ class Stream_thread(QtCore.QThread):
             x123[i] = x123[i] - nolx
             y123[i] = y123[i] - noly
 
-        # [FIX] Переименованы в локальные переменные, чтобы не перекрывать
-        #        глобальные factx/facty внутри функции (путаница в оригинале).
         factx_local = []
         facty_local = []
         d_real_r = []
@@ -572,24 +543,17 @@ class Stream_thread(QtCore.QThread):
                     )
 
                     global factx, facty
-                    # [FIX] Атомарная замена списков под мьютексом.
-                    #        В оригинале Modbus-поток мог читать factx[0] в момент,
-                    #        когда Stream_thread уже очистил список → IndexError.
+
                     with data_lock:
                         factx = new_factx
                         facty = new_facty
 
-                    # [FIX] Сигналы вместо threading.Thread(target=show_koords).
-                    #        Раньше каждый кадр порождал новый поток — ~30/сек,
-                    #        а тот поток обращался к UI напрямую (запрещено в Qt).
                     if new_factx and new_facty:
                         self.update_factx.emit(str(new_factx))
                         self.update_facty.emit(str(new_facty))
 
                     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-                    # [FIX] .copy() создаёт независимую копию QImage до того, как
-                    #        numpy-буфер 'image_rgb' может быть освобождён.
                     qt_image = QtGui.QImage(
                         image_rgb.data,
                         image_rgb.shape[1],
@@ -606,15 +570,10 @@ class Stream_thread(QtCore.QThread):
                     pixmap = QtGui.QPixmap.fromImage(pic)
                     self.change_pixmap.emit(pixmap)
         finally:
-            # [FIX] Камера всегда освобождается при остановке или исключении.
-            #        В оригинале cap.release() не вызывался никогда — после
-            #        нескольких start/stop камера переставала отвечать.
             cap.release()
 
     def stop(self):
         self.thread_is_active = False
-        # [FIX] wait() вместо quit(). Аналогично Modbus_Client_Server —
-        #        quit() здесь ничего не делает, нужно ждать завершения цикла.
         self.wait()
 
 
